@@ -16,65 +16,142 @@ type Square struct {
 	Column *Region
 	Box    *Region
 }
+
 type Region struct {
 	IsSet []bool
 }
 
-type Board struct {
-	Width     int
-	Height    int
-	Dimension int
-	Boxes     []Region
-	Rows      []Region
-	Columns   []Region
-	Squares   []Square
+func NewRegion(d int) *Region {
+	r := new(Region)
+	r.IsSet = make([]bool, d)
+	return r
 }
 
-func initializeBoard(dimension, width, height int) (board *Board) {
-	board = new(Board)
-	board.Dimension = dimension
-	board.Width = width
-	board.Height = height
+type Board struct {
+	W       int // Width
+	H       int // Height
+	D       int // Dimension
+	Boxes   []*Region
+	Rows    []*Region
+	Columns []*Region
+	Squares []*Square
+}
 
-	board.Squares = make([]Square, dimension*dimension)
-	board.Rows = make([]Region, dimension)
-	board.Boxes = make([]Region, dimension)
-	board.Columns = make([]Region, dimension)
+func NewBoard(d, w, h int) *Board {
+	b := new(Board)
+	b.D = d
+	b.W = w
+	b.H = h
+	b.Boxes = make([]*Region, d)
+	b.Rows = make([]*Region, d)
+	b.Columns = make([]*Region, d)
+	b.Squares = make([]*Square, d*d)
 
-	for i := 0; i < dimension; i++ {
-		for j := 0; j < dimension; j++ {
-			// link the squares next-pointer
-			if j != dimension-1 {
-				board.Squares[i*dimension+j].Next = &board.Squares[i*dimension+j+1]
-			} else if i != dimension-1 {
-				board.Squares[i*dimension+j].Next = &board.Squares[(i+1)*dimension]
+	for i := 0; i < d; i++ {
+		for j := 0; j < d; j++ {
+			b.Squares[i*d+j] = new(Square)
+		}
+		b.Rows[i] = NewRegion(d)
+		b.Columns[i] = NewRegion(d)
+		b.Boxes[i] = NewRegion(d)
+	}
+	return b
+}
+
+func (s *Square) setValue(value int) {
+	s.Value = value
+	s.Row.IsSet[value-1] = true
+	s.Column.IsSet[value-1] = true
+	s.Box.IsSet[value-1] = true
+}
+
+func (s *Square) resetValue(value int) {
+	s.Value = 0
+	s.Row.IsSet[value-1] = false
+	s.Column.IsSet[value-1] = false
+	s.Box.IsSet[value-1] = false
+}
+
+func (s *Square) checkValue(value int) bool {
+	return true && !s.Row.IsSet[value-1] && !s.Column.IsSet[value-1] && !s.Box.IsSet[value-1]
+}
+
+func (s *Square) _solve(board *Board) {
+	if !s.Locked {
+		for i := 1; i <= board.D; i++ {
+			if s.checkValue(i) {
+				s.setValue(i)
+				if s.Next == nil {
+					fmt.Println("Next == nil!")
+					board.printBoard()
+				} else {
+					s.Next._solve(board)
+				}
+				s.resetValue(i)
 			}
-			board.Squares[i*dimension+j].Row = &board.Rows[i]
-			board.Squares[j*dimension+i].Column = &board.Columns[i]
+		}
+	} else if s.Next == nil {
+		fmt.Println("Next == nil!")
+		board.printBoard()
+	} else {
+		s.Next._solve(board)
+	}
+
+}
+
+func (b *Board) solve() {
+	b.Squares[0]._solve(b)
+}
+
+func (board *Board) printBoard() {
+	for i := 0; i < board.D; i++ {
+		for j := 0; j < board.D; j++ {
+			value := board.Squares[i*board.D+j].Value
+			if value == 0 {
+				fmt.Printf(". ")
+			} else {
+				fmt.Printf("%d ", board.Squares[i*board.D+j].Value)
+			}
+		}
+		fmt.Println()
+	}
+	fmt.Println()
+}
+
+func initializeBoard(d, w, h int) (board *Board) {
+
+	board = NewBoard(d, w, h)
+
+	for i := 0; i < d; i++ {
+		for j := 0; j < d; j++ {
+			if i*d+j+1 != d*d {
+				board.Squares[i*d+j].Next = board.Squares[i*d+j+1]
+			}
+			board.Squares[i*d+j].Row = board.Rows[i]
+			board.Squares[j*d+i].Column = board.Columns[i]
 		}
 	}
 
 	colNum := 0
 	rowNum := 0
-	for boxX := 0; boxX < width; boxX++ {
-		for boxY := 0; boxY < height; boxY++ {
-			for i := 0; i < width; i++ {
-				if colNum+width > dimension {
+	for boxX := 0; boxX < w; boxX++ {
+		for boxY := 0; boxY < h; boxY++ {
+			for i := 0; i < w; i++ {
+				if colNum+w > d {
 					colNum = 0
-					rowNum += width
+					rowNum += w
 				}
-				for j := 0; j < height; j++ {
-					board.Squares[(i+rowNum*dimension)+j+colNum].Box = &board.Boxes[boxX*width+boxY]
+				for j := 0; j < h; j++ {
+					board.Squares[((i+rowNum)*d)+j+colNum].Box = board.Boxes[boxX*w+boxY]
 				}
 			}
-			colNum += width
+			colNum += w
 		}
 	}
-
 	return board
 }
 
-func createBoard(fileName string) (board *Board, e error) {
+func createBoard(fileName string) (board *Board) {
 
 	var err error
 
@@ -102,25 +179,26 @@ func createBoard(fileName string) (board *Board, e error) {
 
 	// Read the first 3 lines of the file
 	scanner.Scan()
-	dimension := translate(scanner.Text())
+	d := translate(scanner.Text())
 	scanner.Scan()
-	width := translate(scanner.Text())
+	w := translate(scanner.Text())
 	scanner.Scan()
-	height := translate(scanner.Text())
+	h := translate(scanner.Text())
 
-	board = initializeBoard(dimension, width, height)
+	board = initializeBoard(d, w, h)
 
 	// Read the rest of the file
-	for i := 0; i < board.Dimension; i++ {
+	for i := 0; i < d; i++ {
 		scanner.Scan()
 		line := scanner.Text()
-		for j := 0; j < board.Dimension; j++ {
+		for j := 0; j < d; j++ {
 			value := translate(string(line[j]))
-			board.Squares[i*board.Dimension+j].Value = value
 			if value == 0 {
-				board.Squares[i*board.Dimension+j].Locked = false
+				board.Squares[i*d+j].Locked = false
+				board.Squares[i*d+j].Value = 0
 			} else {
-				board.Squares[i*board.Dimension+j].Locked = true
+				board.Squares[i*d+j].Locked = true
+				board.Squares[i*d+j].setValue(value)
 			}
 		}
 	}
@@ -130,10 +208,11 @@ func createBoard(fileName string) (board *Board, e error) {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("%#v\n", board)
-	return board, err
+	return board
 }
 
 func main() {
-	createBoard(os.Args[1])
+	board := createBoard(os.Args[1])
+	board.printBoard()
+	board.solve()
 }
