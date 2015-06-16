@@ -1,11 +1,12 @@
-package main
+package solver
 
 import (
-	"bufio"
+	//	"bufio"
 	"fmt"
 	"log"
-	"os"
+	//	"os"
 	"strconv"
+	"strings"
 )
 
 type Square struct {
@@ -76,31 +77,32 @@ func (s *Square) checkValue(value int) bool {
 	return true && !s.Row.IsSet[value-1] && !s.Column.IsSet[value-1] && !s.Box.IsSet[value-1]
 }
 
-func (s *Square) _solve(board *Board) {
+func _solve(s *Square, board *Board) string {
+	if s == nil {
+		return board.toString()
+	}
 	if !s.Locked {
 		for i := 1; i <= board.D; i++ {
 			if s.checkValue(i) {
 				s.setValue(i)
-				if s.Next == nil {
-					fmt.Println("Next == nil!")
-					board.printBoard()
-				} else {
-					s.Next._solve(board)
+				res := _solve(s.Next, board)
+				if res != "" {
+					return res
 				}
 				s.resetValue(i)
 			}
 		}
-	} else if s.Next == nil {
-		fmt.Println("Next == nil!")
-		board.printBoard()
 	} else {
-		s.Next._solve(board)
+		res := _solve(s.Next, board)
+		if res != "" {
+			return res
+		}
 	}
-
+	return ""
 }
 
 func (b *Board) solve() {
-	b.Squares[0]._solve(b)
+	_solve(b.Squares[0], b)
 }
 
 func (board *Board) printBoard() {
@@ -118,9 +120,20 @@ func (board *Board) printBoard() {
 	fmt.Println()
 }
 
-func initializeBoard(d, w, h int) (board *Board) {
+func (board *Board) toString() string {
+	res := ""
+	for i := 0; i < board.D; i++ {
+		for j := 0; j < board.D; j++ {
+			res += strconv.Itoa(board.Squares[i*board.D+j].Value) + " "
+		}
+		res += "\n"
+	}
+	return res
+}
 
-	board = NewBoard(d, w, h)
+func initializeBoard(d, h, w int) (board *Board) {
+
+	board = NewBoard(d, h, w)
 
 	for i := 0; i < d; i++ {
 		for j := 0; j < d; j++ {
@@ -134,6 +147,7 @@ func initializeBoard(d, w, h int) (board *Board) {
 
 	colNum := 0
 	rowNum := 0
+	fmt.Println("%d, %d\n", w, h)
 	for boxX := 0; boxX < w; boxX++ {
 		for boxY := 0; boxY < h; boxY++ {
 			for i := 0; i < w; i++ {
@@ -141,8 +155,8 @@ func initializeBoard(d, w, h int) (board *Board) {
 					colNum = 0
 					rowNum += w
 				}
-				for j := 0; j < h; j++ {
-					board.Squares[((i+rowNum)*d)+j+colNum].Box = board.Boxes[boxX*w+boxY]
+				for j := 0; j < w; j++ {
+					board.Squares[(i+rowNum)*d+j+colNum].Box = board.Boxes[boxX*w+boxY]
 				}
 			}
 			colNum += w
@@ -151,17 +165,9 @@ func initializeBoard(d, w, h int) (board *Board) {
 	return board
 }
 
-func createBoard(fileName string) (board *Board) {
+func createBoard(encodedString string) (board *Board) {
 
 	var err error
-
-	f, err := os.Open(fileName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
 
 	// Anonymous function that translates '.' to 0, A:Z to 10:37
 	translate := func(s string) (i int) {
@@ -177,20 +183,17 @@ func createBoard(fileName string) (board *Board) {
 		return i
 	}
 
-	// Read the first 3 lines of the file
-	scanner.Scan()
-	d := translate(scanner.Text())
-	scanner.Scan()
-	w := translate(scanner.Text())
-	scanner.Scan()
-	h := translate(scanner.Text())
+	slices := strings.Split(encodedString, ",")
+	d := translate(slices[0])
+	h := translate(slices[1])
+	w := translate(slices[2])
+	rest := slices[3]
 
-	board = initializeBoard(d, w, h)
+	board = initializeBoard(d, h, w)
 
 	// Read the rest of the file
 	for i := 0; i < d; i++ {
-		scanner.Scan()
-		line := scanner.Text()
+		line := string(rest[i*d : i*d+d])
 		for j := 0; j < d; j++ {
 			value := translate(string(line[j]))
 			if value == 0 {
@@ -203,16 +206,16 @@ func createBoard(fileName string) (board *Board) {
 		}
 	}
 
-	// check if translate or the scanner failed
-	if err != nil || scanner.Err() != nil {
+	if err != nil {
 		log.Fatal(err)
 	}
 
 	return board
 }
 
-func main() {
-	board := createBoard(os.Args[1])
+func Solver(s string) string {
+	board := createBoard(s)
 	board.printBoard()
 	board.solve()
+	return board.toString()
 }
