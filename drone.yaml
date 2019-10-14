@@ -3,7 +3,7 @@ name: default
 
 workspace:
   base: /go
-  path: sudoku/main
+  path: /go/sudoku/main
 
 steps:
   - name: test
