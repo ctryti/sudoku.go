@@ -74,7 +74,7 @@ func (s *Square) resetValue(value int) {
 }
 
 func (s *Square) checkValue(value int) bool {
-	return true && !s.Row.IsSet[value-1] && !s.Column.IsSet[value-1] && !s.Box.IsSet[value-1]
+	return !s.Row.IsSet[value-1] && !s.Column.IsSet[value-1] && !s.Box.IsSet[value-1]
 }
 
 func _solve(s *Square, board *Board) string {
@@ -101,8 +101,8 @@ func _solve(s *Square, board *Board) string {
 	return ""
 }
 
-func (b *Board) solve() {
-	_solve(b.Squares[0], b)
+func (board *Board) solve() {
+	_solve(board.Squares[0], board)
 }
 
 func (board *Board) printBoard() {

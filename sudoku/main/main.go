@@ -1,7 +1,7 @@
 package main
 
 import (
-	"no/ctryti/sudoku/server"
+	"../server"
 )
 
 func main() {
