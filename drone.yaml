@@ -3,7 +3,7 @@ name: default
 
 workspace:
   base: /go
-  path: src/github.com/octocat/hello-world
+  path: sudoku/main
 
 steps:
   - name: test
